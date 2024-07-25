@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <title>Image Converter</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        margin: 20px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+      }
+      .container {
+        display: flex;
+        flex-direction: column;
+        width: 100%;
+        max-width: 1200px;
+        gap: 20px;
+      }
+      .section {
+        flex: 1;
+        padding: 20px;
+        border: 1px solid #ddd;
+        border-radius: 5px;
+      }
+      .section h2 {
+        margin-top: 0;
+      }
+      #textarea {
+        width: 100%;
+        height: 200px;
+        resize: vertical;
+        box-sizing: border-box;
+      }
+      #outputContainer {
+        display: flex;
+        flex-wrap: wrap;
+      }
+      #inputFile {
+        margin-bottom: 20px;
+      }
+      .output-item {
+        margin: 10px;
+        width: 150px;
+        text-align: center;
+      }
+      .output-item img {
+        max-width: 100%;
+        height: auto;
+        display: block;
+      }
+      #downloadAll {
+        margin-top: 20px;
+        padding: 10px 20px;
+        background-color: #007bff;
+        color: white;
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+      }
+      #downloadAll:hover {
+        background-color: #0056b3;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <div class="section">
+        <h2>Images Text</h2>
+        <textarea
+          placeholder="الكود اللي منسوخ من الموقع"
+          id="textarea"
+        ></textarea>
+        <button onclick="parseImageLinks()">Convert Text</button>
+      </div>
+
+      <div class="section">
+        <h2>Image Conversion</h2>
+        <p style="direction: rtl; text-align: left">
+          لو معاكي صور(avif) وعاوزة تحوليها
+        </p>
+        <input type="file" id="inputFile" accept="image/*" multiple />
+      </div>
+      <div class="section">
+        <button id="downloadAll" style="display: block">
+          Download All as ZIP
+        </button>
+        <div id="outputContainer"></div>
+      </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.7.1/jszip.min.js"></script>
+    <script>
+      // function parseImageLinks() {
+      //   const textarea = document.querySelector("#textarea");
+      //   const outputContainer = document.getElementById("outputContainer");
+      //   const downloadAllButton = document.getElementById("downloadAll");
+      //   outputContainer.innerHTML = ""; // Clear previous output
+      //   downloadAllButton.style.display = "none";
+
+      //   const textImages = [];
+
+      //   try {
+      //     // Parse the JSON string into an array of objects
+      //     const dataArray = JSON.parse(textarea.value);
+
+      //     // Extract image URLs from the parsed data
+      //     dataArray.forEach((product) => {
+      //       product.productImages.forEach((imageUrl, index) => {
+      //         textImages.push({
+      //           name: `image_${index}.jpg`,
+      //           dataUrl: imageUrl,
+      //         });
+
+      //         // Display the converted image
+      //         const outputItem = document.createElement("div");
+      //         outputItem.className = "output-item";
+      //         const outputImage = document.createElement("img");
+      //         outputImage.src = imageUrl;
+      //         outputItem.appendChild(outputImage);
+
+      //         // Create a download link
+      //         const downloadLink = document.createElement("a");
+      //         downloadLink.href = imageUrl;
+      //         downloadLink.download = `image_${index}.jpg`;
+      //         downloadLink.textContent = `Download this image`;
+      //         outputItem.appendChild(downloadLink);
+
+      //         outputContainer.appendChild(outputItem);
+      //       });
+      //     });
+
+      //     // Show the download all button when images are processed
+      //     if (textImages.length > 0) {
+      //       downloadAllButton.style.display = "block";
+      //     }
+
+      //     // Add click event for the download all button
+      //     downloadAllButton.addEventListener("click", function () {
+      //       console.log(textImages);
+      //       // const zip = new JSZip();
+      //       // textImages.forEach((img) => {
+      //       //   zip.file(img.name, img.dataUrl.split(",")[1], { base64: true });
+      //       // });
+      //       // zip.generateAsync({ type: "blob" }).then(function (content) {
+      //       //   const link = document.createElement("a");
+      //       //   link.href = URL.createObjectURL(content);
+      //       //   link.download = "images.zip";
+      //       //   link.click();
+      //       // });
+
+      //       // Clear the textarea and output container
+      //       textarea.value = "";
+      //       outputContainer.innerHTML = "";
+      //       downloadAllButton.style.display = "none";
+      //     });
+      //   } catch (error) {
+      //     console.error("Error parsing JSON:", error);
+      //   }
+      // }
+
+      function parseImageLinks() {
+        const textarea = document.querySelector("#textarea");
+        const outputContainer = document.getElementById("outputContainer");
+        const downloadAllButton = document.getElementById("downloadAll");
+        outputContainer.innerHTML = ""; // Clear previous output
+        // downloadAllButton.style.display = "none";
+
+        const textImages = [];
+        let imagesProcessed = 0; // To track the number of processed images
+
+        try {
+          // Parse the JSON string into an array of objects
+          const dataArray = JSON.parse(textarea.value);
+          // Extract image URLs from the parsed data
+          dataArray.forEach((product) => {
+            product.productImages.forEach((imageUrl, index) => {
+              const img = new Image();
+              img.crossOrigin = "Anonymous"; // To handle CORS issues
+              img.src = imageUrl;
+              img.onload = function () {
+                const canvas = document.createElement("canvas");
+                canvas.width = img.width;
+                canvas.height = img.height;
+                const ctx = canvas.getContext("2d");
+                ctx.drawImage(img, 0, 0);
+                const dataUrl = canvas.toDataURL("image/jpeg");
+
+                textImages.push({
+                  name: `image_${textImages.length}.jpg`,
+                  dataUrl: dataUrl,
+                });
+
+                // Display the converted image
+                const outputItem = document.createElement("div");
+                outputItem.className = "output-item";
+                const outputImage = document.createElement("img");
+                outputImage.src = dataUrl;
+                outputItem.appendChild(outputImage);
+
+                // Create a download link
+                const downloadLink = document.createElement("a");
+                downloadLink.href = dataUrl;
+                downloadLink.download = `image_${textImages.length}.jpg`;
+                downloadLink.textContent = `Download this image`;
+                outputItem.appendChild(downloadLink);
+
+                outputContainer.appendChild(outputItem);
+
+                imagesProcessed++;
+
+                // Show the download all button when all images are processed
+                // if (
+                //   imagesProcessed ===
+                //   dataArray.length * product.productImages.length
+                // ) {
+                // }
+                // downloadAllButton.style.display = "block";
+              };
+            });
+          });
+
+          // Clear any existing click event listener
+          const newDownloadAllButton = downloadAllButton.cloneNode(true);
+          downloadAllButton.parentNode.replaceChild(
+            newDownloadAllButton,
+            downloadAllButton,
+          );
+
+          // Add click event for the download all button
+          newDownloadAllButton.addEventListener("click", function () {
+            const zip = new JSZip();
+            textImages.forEach((img) => {
+              const base64Data = img.dataUrl.split(",")[1];
+              zip.file(img.name, base64Data, { base64: true });
+            });
+            zip.generateAsync({ type: "blob" }).then(function (content) {
+              const link = document.createElement("a");
+              link.href = URL.createObjectURL(content);
+              link.download = "images.zip";
+              link.click();
+            });
+
+            // Clear the textarea and output container
+            textarea.value = "";
+            outputContainer.innerHTML = "";
+            newDownloadAllButton.style.display = "none";
+          });
+        } catch (error) {
+          console.error("Error parsing JSON:", error);
+        }
+      }
+
+      document
+        .getElementById("inputFile")
+        .addEventListener("change", function (event) {
+          const files = event.target.files;
+          const outputContainer = document.getElementById("outputContainer");
+          const downloadAllButton = document.getElementById("downloadAll");
+          outputContainer.innerHTML = ""; // Clear previous output
+          downloadAllButton.style.display = "none";
+
+          if (files.length === 0) return;
+
+          const convertedImages = [];
+
+          Array.from(files).forEach((file, index) => {
+            const img = new Image();
+            img.src = URL.createObjectURL(file);
+            img.onload = function () {
+              const canvas = document.createElement("canvas");
+              canvas.width = img.width;
+              canvas.height = img.height;
+
+              const ctx = canvas.getContext("2d");
+              ctx.drawImage(img, 0, 0);
+
+              // Convert to JPG format
+              const jpgDataUrl = canvas.toDataURL("image/jpeg");
+
+              // Store the converted image data
+              convertedImages.push({
+                name: `${file.name.split(".")[0]}.jpg`,
+                dataUrl: jpgDataUrl,
+              });
+
+              // Display the converted image
+              const outputItem = document.createElement("div");
+              outputItem.className = "output-item";
+              const outputImage = document.createElement("img");
+              outputImage.src = jpgDataUrl;
+              outputItem.appendChild(outputImage);
+
+              // Create a download link
+              const downloadLink = document.createElement("a");
+              downloadLink.href = jpgDataUrl;
+              downloadLink.download = `${file.name.split(".")[0]}.jpg`;
+              downloadLink.textContent = `Download this image only`;
+              outputItem.appendChild(downloadLink);
+
+              outputContainer.appendChild(outputItem);
+
+              // Show the download all button when all images are processed
+              if (convertedImages.length === files.length) {
+                downloadAllButton.style.display = "block";
+              }
+            };
+          });
+
+          downloadAllButton.addEventListener("click", function () {
+            const zip = new JSZip();
+            convertedImages.forEach((img) => {
+              zip.file(img.name, img.dataUrl.split(",")[1], { base64: true });
+            });
+            zip.generateAsync({ type: "blob" }).then(function (content) {
+              const link = document.createElement("a");
+              link.href = URL.createObjectURL(content);
+              link.download = "converted_images.zip";
+              link.click();
+            });
+
+            // Clear the input and output container
+            document.getElementById("inputFile").value = "";
+            outputContainer.innerHTML = "";
+            downloadAllButton.style.display = "none";
+          });
+        });
+    </script>
+  </body>
+</html>
+
+<!--
+// Function to extract product data
+function extractProductData() {
+    // Get all product containers
+    const productContainers = document.querySelectorAll('.productContainer');
+
+    // Array to store product data
+    const productData = [];
+
+    // Regular expression to match the class pattern
+    const imageClassPattern = /productImagePLP_/;
+
+    // Loop through each product container
+    productContainers.forEach(container => {
+        // Extract the product link
+        const productLink = container.querySelector('a').href;
+
+        // Extract the product images
+        const images = container.querySelectorAll('img');
+        let productImages = [];
+        
+        const iconsUrl = "https://f.nooncdn.com/s/app/com/noon/icons/";
+        const marketPlace = "https://f.nooncdn.com/s/app/com/noon/images/marketplace-en.png";
+
+        images.forEach(img => {
+            // Check if the image's parent or ancestor has the matching class
+            if(!(img.src.startsWith(iconsUrl) || img.src === marketPlace)){
+                // Create a URL object to manipulate the image URL
+                const url = new URL(img.src);
+                
+                // Remove query parameters
+                url.search = "";
+                
+                // Push the cleaned URL to the productImages array
+                productImages.push(url.toString());
+            }
+        });
+
+        // Push the extracted data to the array
+        productData.push({ productLink, productImages });
+    });
+
+    return productData;
+}
+
+// Run the function
+extractProductData();
+-->
+
+ملحوظة لازم الصفحة تعدي علي كل الصور عشان تتحمل معانا
